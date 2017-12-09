@@ -380,3 +380,26 @@ contract DragonFight is DragonCore, Random {
         return ownerValue > opponentValue;
     }
 }
+
+contract DragonTest is DragonFight {
+    
+    function createTestData() public onlyOwner {
+        Dragon memory _dragon = Dragon({
+          attack: 1,
+          defence: 2,
+          color: 3,
+          bodyType: 4,
+          eyesType: 5,
+          mouthType: 6,
+          hornsType: 7,
+          wingsType: 8,
+          health: 9,
+          price: 1
+        });
+
+        uint256 newDragonId = dragons.push(_dragon) - 1;
+        
+        _transfer(0, msg.sender, newDragonId);
+    }
+}
+
