@@ -299,11 +299,17 @@ contract Random {
   // given the number of previous blocks it should hash.
   function random(uint64 upper) public returns (uint64 randomNumber) {
     _seed = uint64(keccak256(keccak256(block.blockhash(block.number), _seed), now));
+    
     return _seed % upper;
   }
 }
 
 contract DragonFight is DragonCore, Random {
+    
+    event Fight(uint256 _ownerDragonId,
+                uint256 _opponentDragonId,
+                bool firstAttack,
+                bool secondAttack);
 
     function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external returns(
         bool firstAttack,
@@ -315,9 +321,12 @@ contract DragonFight is DragonCore, Random {
         Dragon memory ownerDragon = dragons[_ownerDragonId];
         Dragon memory opponentDragon = dragons[_opponentDragonId];
 
+        bool randomAttackResult = _randomAttack(ownerDragon.attack, opponentDragon.defence);
+        bool randomAttack2Result = _randomAttack(ownerDragon.defence, opponentDragon.attack);
+        
+        Fight(_ownerDragonId, _opponentDragonId, randomAttackResult, randomAttack2Result);
 
-        return (_randomAttack(ownerDragon.attack, opponentDragon.defence),
-                _randomAttack(ownerDragon.defence, opponentDragon.attack));
+        return (randomAttackResult, randomAttack2Result);
     }
 
     function _randomAttack(uint8 _ownerDragonAmount, uint8 _opponentDragonAmount) private
