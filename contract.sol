@@ -22,7 +22,7 @@ contract Ownable {
 contract ERC721 {
     function totalSupply() public view returns (uint256 total);
     function balanceOf(address _owner) public view returns (uint256 balance);
-    function ownerOf(uint256 _tokenId) external view returns (address owner);
+    function ownerOf(uint256 _tokenId) public view returns (address owner);
     function transfer(address _to, uint256 _tokenId) external;
 
     event Transfer(address from, address to, uint256 tokenId);
@@ -135,7 +135,7 @@ contract DragonOwnership is DragonBase, ERC721 {
     }
 
     function ownerOf(uint256 _tokenId)
-        external
+        public
         view
         returns (address owner)
     {
@@ -211,7 +211,7 @@ contract DragonOwnership is DragonBase, ERC721 {
     }
 }
 
-contract DragonMarketplace is DragonOwnership {
+contract DragonCore is DragonOwnership {
     function getDragon(uint256 _id)
         external
         view
@@ -293,14 +293,14 @@ contract DragonMarketplace is DragonOwnership {
 }
 
 
-contract DragonFight is DragonBase {
+contract DragonFight is DragonCore {
 
     function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external view returns(
         uint8 firstAttack,
         uint8 secondAttack
       ) {
         require(ownerOf(_ownerDragonId) == msg.sender);
-        require(ownerOf(_ownerDragonId) !== ownerOf(_opponentDragonId));
+        require(ownerOf(_ownerDragonId) != ownerOf(_opponentDragonId));
 
         return (_randomAttack(_ownerDragonId), _randomAttack(_opponentDragonId));
     }
@@ -311,8 +311,4 @@ contract DragonFight is DragonBase {
 
         return uint8(block.blockhash(block.number - 1)) % dragon.attack + 1;
     }
-}
-
-contract DragonCore is DragonMarketplace, DragonFight {
-
 }
