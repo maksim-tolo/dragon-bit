@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.19;
 
 contract Ownable {
   address public owner;
@@ -211,7 +211,7 @@ contract DragonOwnership is DragonBase, ERC721 {
     }
 }
 
-contract DragonCore is DragonOwnership {
+contract DragonMarketplace is DragonOwnership {
     function getDragon(uint256 _id)
         external
         view
@@ -290,4 +290,25 @@ contract DragonCore is DragonOwnership {
         uint256 balance = this.balance;
         owner.transfer(balance);
     }
+}
+
+
+contract DragonFight is DragonBase {
+
+    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external view
+    returns(uint8 firstAttack, uint8 secondAttack) {
+
+        return (_randomAttack(_ownerDragonId), _randomAttack(_opponentDragonId));
+    }
+
+    function _randomAttack(uint256 _ownerDragonId) private view
+    returns(uint8 attack) {
+        Dragon memory dragon = dragons[_ownerDragonId];
+
+        return uint8(block.blockhash(block.number - 1)) % dragon.attack + 1;
+    }
+}
+
+contract DragonCore is DragonMarketplace, DragonFight {
+    
 }
