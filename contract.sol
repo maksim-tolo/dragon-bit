@@ -156,7 +156,7 @@ contract DragonOwnership is DragonBase, ERC721 {
             uint256 resultIndex = 0;
             uint256 dragonId;
 
-            for (dragonId = 1; dragonId <= totalDragons; dragonId++) {
+            for (dragonId = 0; dragonId <= totalDragons; dragonId++) {
                 if (dragonIndexToOwner[dragonId] == _owner) {
                     result[resultIndex] = dragonId;
                     resultIndex++;
@@ -310,5 +310,5 @@ contract DragonFight is DragonBase {
 }
 
 contract DragonCore is DragonMarketplace, DragonFight {
-    
+
 }
