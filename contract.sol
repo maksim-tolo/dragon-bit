@@ -335,23 +335,48 @@ contract DragonCore is DragonOwnership {
     }
 }
 
+contract Random {
+  uint64 _seed = 0;
 
-contract DragonFight is DragonCore {
+  // return a pseudo random number between lower and upper bounds
+  // given the number of previous blocks it should hash.
+  function random(uint64 upper) public returns (uint64 randomNumber) {
+    _seed = uint64(keccak256(keccak256(block.blockhash(block.number), _seed), now));
 
-    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external view returns(
-        uint8 firstAttack,
-        uint8 secondAttack
+    return _seed % upper;
+  }
+}
+
+contract DragonFight is DragonCore, Random {
+
+    event Fight(uint256 _ownerDragonId,
+                uint256 _opponentDragonId,
+                bool firstAttack,
+                bool secondAttack);
+
+    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external returns(
+        bool firstAttack,
+        bool secondAttack
       ) {
         require(_owns(msg.sender, _ownerDragonId));
         require(!_owns(msg.sender, _ownerDragonId));
 
-        return (_randomAttack(_ownerDragonId), _randomAttack(_opponentDragonId));
+        Dragon memory ownerDragon = dragons[_ownerDragonId];
+        Dragon memory opponentDragon = dragons[_opponentDragonId];
+
+        bool randomAttackResult = _randomAttack(ownerDragon.attack, opponentDragon.defence);
+        bool randomAttack2Result = _randomAttack(ownerDragon.defence, opponentDragon.attack);
+
+        Fight(_ownerDragonId, _opponentDragonId, randomAttackResult, randomAttack2Result);
+
+        return (randomAttackResult, randomAttack2Result);
     }
 
-    function _randomAttack(uint256 _ownerDragonId) private view
-    returns(uint8 attack) {
-        Dragon memory dragon = dragons[_ownerDragonId];
+    function _randomAttack(uint8 _ownerDragonAmount, uint8 _opponentDragonAmount) private
+    returns(bool result) {
+        uint64 ownerValue = random(uint64(_ownerDragonAmount));
+        uint64 opponentValue = random(uint64(_opponentDragonAmount));
 
-        return uint8(block.blockhash(block.number - 1)) % dragon.attack + 1;
+        return ownerValue > opponentValue;
     }
 }
