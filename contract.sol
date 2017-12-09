@@ -22,8 +22,10 @@ contract Ownable {
 contract ERC721 {
     function totalSupply() public view returns (uint256 total);
     function balanceOf(address _owner) public view returns (uint256 balance);
-    function ownerOf(uint256 _tokenId) public view returns (address owner);
+    function ownerOf(uint256 _tokenId) external view returns (address owner);
+    function approve(address _to, uint256 _tokenId) external;
     function transfer(address _to, uint256 _tokenId) external;
+    function transferFrom(address _from, address _to, uint256 _tokenId) external;
 
     event Transfer(address from, address to, uint256 tokenId);
     event Approval(address owner, address approved, uint256 tokenId);
@@ -36,6 +38,8 @@ contract DragonBase is Ownable {
     event Transfer(address from, address to, uint256 tokenId);
 
     struct Dragon {
+      // uint256 genes; TODO
+      // string name; TODO
       uint8 attack;
       uint8 defence;
       uint8 color;
@@ -52,10 +56,16 @@ contract DragonBase is Ownable {
 
     mapping (uint256 => address) public dragonIndexToOwner;
     mapping (address => uint256) ownershipTokenCount;
+    mapping (uint256 => address) public dragonIndexToApproved;
 
     function _transfer(address _from, address _to, uint256 _tokenId) internal {
         ownershipTokenCount[_to]++;
         dragonIndexToOwner[_tokenId] = _to;
+
+        if (_from != address(0)) {
+            ownershipTokenCount[_from]--;
+            delete dragonIndexToApproved[_tokenId];
+        }
 
         Transfer(_from, _to, _tokenId);
     }
@@ -114,6 +124,14 @@ contract DragonOwnership is DragonBase, ERC721 {
         return dragonIndexToOwner[_tokenId] == _claimant;
     }
 
+    function _approvedFor(address _claimant, uint256 _tokenId) internal view returns (bool) {
+        return dragonIndexToApproved[_tokenId] == _claimant;
+    }
+
+    function _approve(uint256 _tokenId, address _approved) internal {
+        dragonIndexToApproved[_tokenId] = _approved;
+    }
+
     function balanceOf(address _owner) public view returns (uint256 count) {
         return ownershipTokenCount[_owner];
     }
@@ -130,12 +148,37 @@ contract DragonOwnership is DragonBase, ERC721 {
         _transfer(msg.sender, _to, _tokenId);
     }
 
+    function approve(
+        address _to,
+        uint256 _tokenId
+    )
+        external
+    {
+        require(_owns(msg.sender, _tokenId));
+        _approve(_tokenId, _to);
+        Approval(msg.sender, _to, _tokenId);
+    }
+
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _tokenId
+    )
+        external
+    {
+        require(_to != address(0));
+        require(_to != address(this));
+        require(_approvedFor(msg.sender, _tokenId));
+        require(_owns(_from, _tokenId));
+        _transfer(_from, _to, _tokenId);
+    }
+
     function totalSupply() public view returns (uint) {
-        return dragons.length - 1;
+        return dragons.length;
     }
 
     function ownerOf(uint256 _tokenId)
-        public
+        external
         view
         returns (address owner)
     {
@@ -299,8 +342,8 @@ contract DragonFight is DragonCore {
         uint8 firstAttack,
         uint8 secondAttack
       ) {
-        require(ownerOf(_ownerDragonId) == msg.sender);
-        require(ownerOf(_ownerDragonId) != ownerOf(_opponentDragonId));
+        require(_owns(msg.sender, _ownerDragonId));
+        require(!_owns(msg.sender, _ownerDragonId));
 
         return (_randomAttack(_ownerDragonId), _randomAttack(_opponentDragonId));
     }
