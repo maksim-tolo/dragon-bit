@@ -295,8 +295,12 @@ contract DragonMarketplace is DragonOwnership {
 
 contract DragonFight is DragonBase {
 
-    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external view
-    returns(uint8 firstAttack, uint8 secondAttack) {
+    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external view returns(
+        uint8 firstAttack,
+        uint8 secondAttack
+      ) {
+        require(ownerOf(_ownerDragonId) == msg.sender);
+        require(ownerOf(_ownerDragonId) !== ownerOf(_opponentDragonId));
 
         return (_randomAttack(_ownerDragonId), _randomAttack(_opponentDragonId));
     }
