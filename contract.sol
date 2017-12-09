@@ -292,23 +292,40 @@ contract DragonCore is DragonOwnership {
     }
 }
 
+contract Random {
+  uint64 _seed = 0;
 
-contract DragonFight is DragonCore {
+  // return a pseudo random number between lower and upper bounds
+  // given the number of previous blocks it should hash.
+  function random(uint64 upper) public returns (uint64 randomNumber) {
+    _seed = uint64(keccak256(keccak256(block.blockhash(block.number), _seed), now));
+    return _seed % upper;
+  }
+}
 
-    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external view returns(
-        uint8 firstAttack,
-        uint8 secondAttack
+contract DragonFight is DragonCore, Random {
+
+    function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external returns(
+        bool firstAttack,
+        bool secondAttack
       ) {
         require(ownerOf(_ownerDragonId) == msg.sender);
         require(ownerOf(_ownerDragonId) != ownerOf(_opponentDragonId));
+        
+        Dragon memory ownerDragon = dragons[_ownerDragonId];
+        Dragon memory opponentDragon = dragons[_opponentDragonId];
 
-        return (_randomAttack(_ownerDragonId), _randomAttack(_opponentDragonId));
+
+        return (_randomAttack(ownerDragon.attack, opponentDragon.defence),
+                _randomAttack(ownerDragon.defence, opponentDragon.attack));
     }
 
-    function _randomAttack(uint256 _ownerDragonId) private view
-    returns(uint8 attack) {
-        Dragon memory dragon = dragons[_ownerDragonId];
-
-        return uint8(block.blockhash(block.number - 1)) % dragon.attack + 1;
+    function _randomAttack(uint8 _ownerDragonAmount, uint8 _opponentDragonAmount) private
+    returns(bool result) {
+        uint64 ownerValue = random(uint64(_ownerDragonAmount));
+        uint64 opponentValue = random(uint64(_opponentDragonAmount));
+        
+        return ownerValue > opponentValue;
     }
 }
+
