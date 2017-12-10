@@ -1,20 +1,20 @@
 pragma solidity ^0.4.19;
 
 contract Ownable {
-  address public owner;
+  address public contractOwner;
 
   function Ownable() {
-    owner = msg.sender;
+    contractOwner = msg.sender;
   }
 
   modifier onlyOwner() {
-    require(msg.sender == owner);
+    require(msg.sender == contractOwner);
     _;
   }
 
   function transferOwnership(address newOwner) onlyOwner {
     if (newOwner != address(0)) {
-      owner = newOwner;
+      contractOwner = newOwner;
     }
   }
 }
@@ -22,19 +22,19 @@ contract Ownable {
 contract ERC721 {
     function totalSupply() public view returns (uint256 total);
     function balanceOf(address _owner) public view returns (uint256 balance);
-    function ownerOf(uint256 _tokenId) external view returns (address owner);
+    function ownerOf(uint256 _tokenId) external view returns (address tokenOwner);
     function approve(address _to, uint256 _tokenId) external;
     function transfer(address _to, uint256 _tokenId) external;
     function transferFrom(address _from, address _to, uint256 _tokenId) external;
 
     event Transfer(address from, address to, uint256 tokenId);
-    event Approval(address owner, address approved, uint256 tokenId);
+    event Approval(address tokenOwner, address approved, uint256 tokenId);
 
     function supportsInterface(bytes4 _interfaceID) external view returns (bool);
 }
 
 contract DragonBase is Ownable {
-    event Birth(address owner, uint256 dragonId);
+    event Birth(address tokenOwner, uint256 dragonId);
     event Transfer(address from, address to, uint256 tokenId);
 
     struct Dragon {
@@ -182,18 +182,17 @@ contract DragonOwnership is DragonBase, ERC721 {
     function ownerOf(uint256 _tokenId)
         external
         view
-        returns (address owner)
+        returns (address tokenOwner)
     {
-        owner = dragonIndexToOwner[_tokenId];
+        tokenOwner = dragonIndexToOwner[_tokenId];
 
-        require(owner != address(0));
+        require(tokenOwner != address(0));
     }
 
     function tokensOfOwner(address _owner) external view returns(uint256[] ownerTokens) {
         uint256 tokenCount = balanceOf(_owner);
 
         if (tokenCount == 0) {
-            // Return an empty array
             return new uint256[](0);
         } else {
             uint256[] memory result = new uint256[](tokenCount);
@@ -343,9 +342,9 @@ contract DragonCore is DragonOwnership {
 
     function buyDragon(uint256 _id) payable {
       Dragon storage d = dragons[_id];
-      owner = dragonIndexToOwner[_id];
+      address dragonOwner = dragonIndexToOwner[_id];
 
-      require(owner == address(0));
+      require(dragonOwner == address(0));
       require(msg.value > d.price);
 
       Birth(msg.sender, _id);
@@ -357,7 +356,7 @@ contract DragonCore is DragonOwnership {
 
     function withdrawBalance() external onlyOwner {
         uint256 balance = this.balance;
-        owner.transfer(balance);
+        contractOwner.transfer(balance);
     }
 }
 
@@ -385,7 +384,8 @@ contract DragonFight is DragonCore, Random {
         bool secondAttack
       ) {
         require(_owns(msg.sender, _ownerDragonId));
-        require(!_owns(msg.sender, _ownerDragonId));
+        require(!_owns(msg.sender, _opponentDragonId));
+        require(!_owns(address(0), _opponentDragonId));
 
         Dragon memory ownerDragon = dragons[_ownerDragonId];
         Dragon memory opponentDragon = dragons[_opponentDragonId];
