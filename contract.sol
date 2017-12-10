@@ -49,7 +49,7 @@ contract DragonBase is Ownable {
       uint8 hornsType;
       uint8 wingsType;
       uint16 health;
-      uint16 price;
+      uint256 price;
 
       uint256 points;
     }
@@ -84,7 +84,7 @@ contract DragonBase is Ownable {
         uint8 _hornsType,
         uint8 _wingsType,
         uint16 _health,
-        uint16 _price
+        uint256 _price
       ) internal returns (uint) {
         Dragon memory _dragon = Dragon({
           attack: _attack,
@@ -326,7 +326,7 @@ contract DragonCore is DragonOwnership {
           uint8 hornsType,
           uint8 wingsType,
           uint16 health,
-          uint16 price
+          uint256 price
     ) {
         Dragon storage d = dragons[_id];
 
@@ -373,7 +373,7 @@ contract DragonCore is DragonOwnership {
       address dragonOwner = dragonIndexToOwner[_id];
 
       require(dragonOwner == address(0));
-      require(msg.value > d.price);
+      require(msg.value >= d.price);
 
       Birth(msg.sender, _id);
 
@@ -444,17 +444,19 @@ contract DragonFight is DragonCore, Random {
 contract DragonTest is DragonFight {
 
     function createTestData() public onlyOwner {
+        // 0.001 eth
+        uint256 price = 1000000000000000;
 
-        uint newDragon1Id = _createDragon(1, 2, 1, 1, 1, 1, 1, 1, 1, 1);
+        uint newDragon1Id = _createDragon(1, 2, 1, 1, 1, 1, 1, 1, 1, price);
         _transfer(0, msg.sender, newDragon1Id);
         dragonsOnSaleCount--;
 
-        uint newDragon2Id = _createDragon(2, 6, 2, 2, 2, 2, 2, 2, 2, 1);
+        uint newDragon2Id = _createDragon(2, 6, 2, 2, 2, 2, 2, 2, 2, price);
         _transfer(0, msg.sender, newDragon2Id);
         dragonsOnSaleCount--;
 
         // Free dragons
-        _createDragon(3, 2, 3, 3, 3, 1, 3, 3, 3, 1);
-        _createDragon(4, 4, 4, 4, 2, 2, 2, 4, 4, 1);
+        _createDragon(3, 2, 3, 3, 3, 1, 3, 3, 3, price);
+        _createDragon(4, 4, 4, 4, 2, 2, 2, 4, 4, price);
     }
 }
