@@ -54,6 +54,8 @@ contract DragonBase is Ownable {
 
     Dragon[] dragons;
 
+    uint256 dragonsOnSaleCount = 0;
+
     mapping (uint256 => address) public dragonIndexToOwner;
     mapping (address => uint256) ownershipTokenCount;
     mapping (uint256 => address) public dragonIndexToApproved;
@@ -199,8 +201,28 @@ contract DragonOwnership is DragonBase, ERC721 {
             uint256 resultIndex = 0;
             uint256 dragonId;
 
-            for (dragonId = 0; dragonId <= totalDragons; dragonId++) {
-                if (dragonIndexToOwner[dragonId] == _owner) {
+            for (dragonId = 0; dragonId < totalDragons; dragonId++) {
+                if (_owns(_owner, dragonId)) {
+                    result[resultIndex] = dragonId;
+                    resultIndex++;
+                }
+            }
+
+            return result;
+        }
+    }
+
+    function tokensOnSale() external view returns(uint256[] availableTokens) {
+        if (dragonsOnSaleCount == 0) {
+            return new uint256[](0);
+        } else {
+            uint256[] memory result = new uint256[](dragonsOnSaleCount);
+            uint256 totalDragons = totalSupply();
+            uint256 resultIndex = 0;
+            uint256 dragonId;
+
+            for (dragonId = 0; dragonId < totalDragons; dragonId++) {
+                if (_owns(address(0), dragonId)) {
                     result[resultIndex] = dragonId;
                     resultIndex++;
                 }
@@ -314,6 +336,8 @@ contract DragonCore is DragonOwnership {
 
         require(newDragonId == uint256(uint32(newDragonId)));
 
+        dragonsOnSaleCount++;
+
         return newDragonId;
     }
 
@@ -325,6 +349,8 @@ contract DragonCore is DragonOwnership {
       require(msg.value > d.price);
 
       Birth(msg.sender, _id);
+
+      dragonsOnSaleCount--;
 
       _transfer(0, msg.sender, _id);
     }
