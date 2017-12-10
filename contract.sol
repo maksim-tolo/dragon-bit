@@ -268,6 +268,28 @@ contract DragonOwnership is DragonBase, ERC721 {
         }
     }
 
+    function tokensForFight() external view returns(uint256[] availableTokens) {
+        uint256 dragonsForFightCount = dragons.length - dragonsOnSaleCount - ownershipTokenCount[msg.sender];
+
+        if (dragonsForFightCount == 0) {
+            return new uint256[](0);
+        } else {
+            uint256[] memory result = new uint256[](dragonsForFightCount);
+            uint256 totalDragons = totalSupply();
+            uint256 resultIndex = 0;
+            uint256 dragonId;
+
+            for (dragonId = 0; dragonId < totalDragons; dragonId++) {
+                if (!_owns(address(0), dragonId) && !_owns(address(msg.sender), dragonId)) {
+                    result[resultIndex] = dragonId;
+                    resultIndex++;
+                }
+            }
+
+            return result;
+        }
+    }
+
     function _memcpy(uint _dest, uint _src, uint _len) private view {
         // Copy word-length chunks while possible
         for(; _len >= 32; _len -= 32) {
