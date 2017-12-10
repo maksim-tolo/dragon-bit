@@ -326,7 +326,8 @@ contract DragonCore is DragonOwnership {
           uint8 hornsType,
           uint8 wingsType,
           uint16 health,
-          uint16 price
+          uint16 price,
+          uint256 points
     ) {
         Dragon storage d = dragons[_id];
 
@@ -340,6 +341,7 @@ contract DragonCore is DragonOwnership {
         wingsType = d.wingsType;
         health = d.health;
         price = d.price;
+        points = d.points;
     }
 
     function createDragon(
