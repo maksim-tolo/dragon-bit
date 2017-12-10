@@ -50,6 +50,8 @@ contract DragonBase is Ownable {
       uint8 wingsType;
       uint16 health;
       uint16 price;
+      
+      uint256 points;
     }
 
     Dragon[] dragons;
@@ -353,7 +355,8 @@ contract DragonCore is DragonOwnership {
           hornsType: _hornsType,
           wingsType: _wingsType,
           health: _health,
-          price: _price
+          price: _price,
+          points: 0
         });
 
         uint256 newDragonId = dragons.push(_dragon) - 1;
@@ -390,8 +393,8 @@ contract Random {
 
   // return a pseudo random number between lower and upper bounds
   // given the number of previous blocks it should hash.
-  function random(uint64 upper) public returns (uint64 randomNumber) {
-    _seed = uint64(keccak256(keccak256(block.blockhash(block.number), _seed), now));
+  function random(uint64 upper, uint8 step) public returns (uint64 randomNumber) {
+    _seed = uint64(keccak256(keccak256(block.blockhash(block.number - step), _seed), now));
     
     return _seed % upper;
   }
@@ -405,8 +408,10 @@ contract DragonFight is DragonCore, Random {
                 bool secondAttack);
 
     function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external returns(
-        bool firstAttack,
-        bool secondAttack
+        bool attack1,
+        bool attack2,
+        bool attack3,
+        bool attack4
       ) {
         require(_owns(msg.sender, _ownerDragonId));
         require(!_owns(msg.sender, _opponentDragonId));
@@ -415,18 +420,22 @@ contract DragonFight is DragonCore, Random {
         Dragon memory ownerDragon = dragons[_ownerDragonId];
         Dragon memory opponentDragon = dragons[_opponentDragonId];
 
-        bool randomAttackResult = _randomAttack(ownerDragon.attack, opponentDragon.defence);
-        bool randomAttack2Result = _randomAttack(ownerDragon.defence, opponentDragon.attack);
+        attack1 = _randomAttack(ownerDragon.attack, opponentDragon.defence, 1);
+        attack2 = _randomAttack(ownerDragon.defence, opponentDragon.attack, 2);
+        attack3 = _randomAttack(ownerDragon.attack, opponentDragon.defence, 3);
+        attack4 = _randomAttack(ownerDragon.defence, opponentDragon.attack, 4);
+        
+        uint8 points = (attack1 ? 1 : 0) + (attack2 ? 1 : 0) + (attack3 ? 1 : 0) + (attack4 ? 1 : 0);
+        
+        ownerDragon.points += points;
 
-        Fight(_ownerDragonId, _opponentDragonId, randomAttackResult, randomAttack2Result);
-
-        return (randomAttackResult, randomAttack2Result);
+        Fight(_ownerDragonId, _opponentDragonId, attack1, attack2);
     }
 
-    function _randomAttack(uint8 _ownerDragonAmount, uint8 _opponentDragonAmount) private
+    function _randomAttack(uint8 _ownerDragonAmount, uint8 _opponentDragonAmount, uint8 _step) private
     returns(bool result) {
-        uint64 ownerValue = random(uint64(_ownerDragonAmount));
-        uint64 opponentValue = random(uint64(_opponentDragonAmount));
+        uint64 ownerValue = random(uint64(_ownerDragonAmount), _step);
+        uint64 opponentValue = random(uint64(_opponentDragonAmount), _step);
         
         return ownerValue > opponentValue;
     }
@@ -443,8 +452,8 @@ contract DragonTest is DragonFight {
         _transfer(0, msg.sender, newDragon2Id);
         
         // Free dragons
-        _createDragon(3, 2, 3, 3, 3, 3, 3, 3, 3, 1);
-        _createDragon(4, 4, 4, 4, 4, 4, 4, 4, 4, 1);
+        _createDragon(3, 2, 3, 3, 3, 1, 3, 3, 3, 1);
+        _createDragon(4, 4, 4, 4, 2, 2, 2, 4, 4, 1);
     }
 }
 
