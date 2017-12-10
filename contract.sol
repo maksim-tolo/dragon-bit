@@ -19,6 +19,18 @@ contract Ownable {
   }
 }
 
+contract Random {
+  uint64 _seed = 0;
+
+  // return a pseudo random number between lower and upper bounds
+  // given the number of previous blocks it should hash.
+  function random(uint64 upper, uint8 step) public returns (uint64 randomNumber) {
+    _seed = uint64(keccak256(keccak256(block.blockhash(block.number - step), _seed), now));
+
+    return _seed % upper;
+  }
+}
+
 contract ERC721 {
     function totalSupply() public view returns (uint256 total);
     function balanceOf(address _owner) public view returns (uint256 balance);
@@ -33,25 +45,40 @@ contract ERC721 {
     function supportsInterface(bytes4 _interfaceID) external view returns (bool);
 }
 
-contract DragonBase is Ownable {
+contract DragonBase is Ownable, Random {
     event Birth(address tokenOwner, uint256 dragonId);
     event Transfer(address from, address to, uint256 tokenId);
 
-    struct Dragon {
-      // uint256 genes; TODO
-      // string name; TODO
-      uint8 attack;
-      uint8 defence;
-      uint8 color;
+    struct Skills {
+      uint256 intelligence;
+      uint256 strength;
+      uint256 stamina;
+      uint256 agility;
+    }
+
+    struct Appearance {
+      string color;
+      string wingsColor;
       uint8 bodyType;
       uint8 eyesType;
       uint8 mouthType;
       uint8 hornsType;
-      uint8 wingsType;
-      uint16 health;
-      uint256 price;
+    }
 
-      uint256 points;
+    struct Stats {
+      uint256 wins;
+      uint256 losses;
+    }
+
+    struct Dragon {
+      string name;
+
+      Appearance appearance;
+      Skills skills;
+      Stats stats;
+
+      uint256 health;
+      uint256 price;
     }
 
     Dragon[] dragons;
@@ -74,30 +101,84 @@ contract DragonBase is Ownable {
         Transfer(_from, _to, _tokenId);
     }
 
+    function _initSkills(uint32 level) internal returns (Skills) {
+      uint64 points = level * 2;
+      uint8 index;
+      uint64 skill;
+      uint256 _intelligence = 1;
+      uint256 _strength = 1;
+      uint256 _stamina = 1;
+      uint256 _agility = 1;
+
+      for (index = 0; index < points && index < 256; index++) {
+          skill = random(4, index + 1);
+
+          if (skill == 0) {
+            _intelligence++;
+          } else if (skill == 1) {
+            _strength++;
+          } else if (skill == 2) {
+            _stamina++;
+          } else if (skill == 3) {
+            _agility++;
+          }
+      }
+
+      Skills memory _skils = Skills({
+        intelligence: _intelligence,
+        strength: _strength,
+        stamina: _stamina,
+        agility: _agility
+      });
+
+      return _skils;
+    }
+
+    function _getHealth(uint256 stamina) internal returns (uint256) {
+       uint8 _baseHealth = 10;
+
+       return stamina * 2 + _baseHealth;
+    }
+
+    function _getPrice(uint32 level) internal returns (uint256) {
+       uint256 basePrice = 1000000000000000; // 0.001 eth
+
+       return basePrice * level;
+    }
+
     function _createDragon (
-        uint8 _attack,
-        uint8 _defence,
-        uint8 _color,
+        uint32 _level,
+        string _color,
+        string _wingsColor,
         uint8 _bodyType,
         uint8 _eyesType,
         uint8 _mouthType,
-        uint8 _hornsType,
-        uint8 _wingsType,
-        uint16 _health,
-        uint256 _price
+        uint8 _hornsType
       ) internal returns (uint) {
-        Dragon memory _dragon = Dragon({
-          attack: _attack,
-          defence: _defence,
+        Skills memory _skills = _initSkills(_level);
+        Stats memory _stats = Stats({
+          wins: 0,
+          losses: 0
+        });
+        Appearance memory _appearance = Appearance({
           color: _color,
+          wingsColor: _wingsColor,
           bodyType: _bodyType,
           eyesType: _eyesType,
           mouthType: _mouthType,
-          hornsType: _hornsType,
-          wingsType: _wingsType,
+          hornsType: _hornsType
+        });
+
+        uint256 _health = _getHealth(_skills.stamina);
+        uint256 _price = _getPrice(_level);
+
+        Dragon memory _dragon = Dragon({
+          name: '',
+          stats: _stats,
+          skills: _skills,
+          appearance: _appearance,
           health: _health,
-          price: _price,
-          points: 0
+          price: _price
         });
 
         uint256 newDragonId = dragons.push(_dragon) - 1;
@@ -339,65 +420,82 @@ contract DragonCore is DragonOwnership {
         external
         view
         returns (
-          uint8 attack,
-          uint8 defence,
-          uint8 color,
+          string name,
+          string color,
+          string wingsColor,
           uint8 bodyType,
           uint8 eyesType,
           uint8 mouthType,
           uint8 hornsType,
-          uint8 wingsType,
-          uint16 health,
           uint256 price,
-          uint256 points
+          uint256 wins,
+          uint256 losses,
+          uint256 health
     ) {
         Dragon storage d = dragons[_id];
 
-        attack = d.attack;
-        defence = d.defence;
-        color = d.color;
-        bodyType = d.bodyType;
-        eyesType = d.eyesType;
-        mouthType = d.mouthType;
-        hornsType = d.hornsType;
-        wingsType = d.wingsType;
-        health = d.health;
-        price = d.price;
-        points = d.points;
-    }
-
-    function createDragon(
-        uint8 _attack,
-        uint8 _defence,
-        uint8 _color,
-        uint8 _bodyType,
-        uint8 _eyesType,
-        uint8 _mouthType,
-        uint8 _hornsType,
-        uint8 _wingsType,
-        uint16 _health,
-        uint16 _price
-      ) external onlyOwner returns (uint) {
-        return _createDragon(
-          _attack,
-          _defence,
-          _color,
-          _bodyType,
-          _eyesType,
-          _mouthType,
-          _hornsType,
-          _wingsType,
-          _health,
-          _price
+        return (
+          d.name,
+          d.appearance.color,
+          d.appearance.wingsColor,
+          d.appearance.bodyType,
+          d.appearance.eyesType,
+          d.appearance.mouthType,
+          d.appearance.hornsType,
+          d.price,
+          d.stats.wins,
+          d.stats.losses,
+          d.health
         );
     }
 
-    function buyDragon(uint256 _id) payable {
+    function getDragonSkills(uint256 _id)
+        external
+        view
+        returns (
+          uint256 intelligence,
+          uint256 strength,
+          uint256 stamina,
+          uint256 agility
+    ) {
+        Dragon storage d = dragons[_id];
+
+        return (
+          d.skills.intelligence,
+          d.skills.strength,
+          d.skills.stamina,
+          d.skills.agility
+        );
+    }
+
+    function createDragon(
+        uint32 _level,
+        string _color,
+        string _wingsColor,
+        uint8 _bodyType,
+        uint8 _eyesType,
+        uint8 _mouthType,
+        uint8 _hornsType
+      ) external onlyOwner returns (uint) {
+        return _createDragon(
+          _level,
+          _color,
+          _wingsColor,
+          _bodyType,
+          _eyesType,
+          _mouthType,
+          _hornsType
+        );
+    }
+
+    function buyDragon(uint256 _id, string name) payable {
       Dragon storage d = dragons[_id];
       address dragonOwner = dragonIndexToOwner[_id];
 
       require(dragonOwner == address(0));
       require(msg.value >= d.price);
+
+      d.name = name;
 
       Birth(msg.sender, _id);
 
@@ -412,30 +510,12 @@ contract DragonCore is DragonOwnership {
     }
 }
 
-contract Random {
-  uint64 _seed = 0;
+contract DragonFight is DragonCore {
 
-  // return a pseudo random number between lower and upper bounds
-  // given the number of previous blocks it should hash.
-  function random(uint64 upper, uint8 step) public returns (uint64 randomNumber) {
-    _seed = uint64(keccak256(keccak256(block.blockhash(block.number - step), _seed), now));
-
-    return _seed % upper;
-  }
-}
-
-contract DragonFight is DragonCore, Random {
-
-    event Fight(uint256 _ownerDragonId,
-                uint256 _opponentDragonId,
-                bool firstAttack,
-                bool secondAttack);
+    event Fight(uint256 _winner, uint256 _loser);
 
     function fight(uint256 _ownerDragonId, uint256 _opponentDragonId) external returns(
-        bool attack1,
-        bool attack2,
-        bool attack3,
-        bool attack4
+        uint256 _winner
       ) {
         require(_owns(msg.sender, _ownerDragonId));
         require(!_owns(msg.sender, _opponentDragonId));
@@ -444,43 +524,83 @@ contract DragonFight is DragonCore, Random {
         Dragon memory ownerDragon = dragons[_ownerDragonId];
         Dragon memory opponentDragon = dragons[_opponentDragonId];
 
-        attack1 = _randomAttack(ownerDragon.attack, opponentDragon.defence, 1);
-        attack2 = _randomAttack(ownerDragon.defence, opponentDragon.attack, 2);
-        attack3 = _randomAttack(ownerDragon.attack, opponentDragon.defence, 3);
-        attack4 = _randomAttack(ownerDragon.defence, opponentDragon.attack, 4);
+        uint256 hitNumber = 0;
+        uint256 ownerAttack = 0;
+        uint256 opponentAttack = 0;
+        uint256 ownerHealth = ownerDragon.health;
+        uint256 opponentHealth = opponentDragon.health;
 
-        uint8 points = (attack1 ? 1 : 0) + (attack2 ? 1 : 0) + (attack3 ? 1 : 0) + (attack4 ? 1 : 0);
+        while (ownerHealth > opponentAttack && opponentHealth > ownerAttack) {
+          opponentHealth -= ownerAttack;
+          ownerHealth -= opponentAttack;
 
-        ownerDragon.points += points;
+          ownerAttack = _randomAttack(
+            ownerDragon.skills,
+            opponentDragon.skills,
+            uint8(hitNumber + 1)
+          );
 
-        Fight(_ownerDragonId, _opponentDragonId, attack1, attack2);
+          hitNumber++;
+
+          opponentAttack = _randomAttack(
+            opponentDragon.skills,
+            ownerDragon.skills,
+            uint8(hitNumber + 1)
+          );
+
+          hitNumber++;
+        }
+
+        if (opponentHealth <= ownerAttack) {
+          ownerDragon.stats.wins++;
+          opponentDragon.stats.losses++;
+
+          Fight(_ownerDragonId, _opponentDragonId);
+
+          return _ownerDragonId;
+        } else {
+          ownerDragon.stats.losses++;
+          opponentDragon.stats.wins++;
+
+          Fight(_opponentDragonId, _ownerDragonId);
+
+          return _opponentDragonId;
+        }
     }
 
-    function _randomAttack(uint8 _ownerDragonAmount, uint8 _opponentDragonAmount, uint8 _step) private
-    returns(bool result) {
-        uint64 ownerValue = random(uint64(_ownerDragonAmount), _step);
-        uint64 opponentValue = random(uint64(_opponentDragonAmount), _step);
+    function _randomAttack(Skills _attackingDragonSkills, Skills _defensibleDragonSkills, uint8 _step) private
+    returns(uint256 damage) {
+        uint64 range = 100;
+        uint256 criticalHitChance = 5 + _attackingDragonSkills.intelligence;
+        uint256 escapeHitChance = 5 + _defensibleDragonSkills.agility;
+        uint256 attackPower = _attackingDragonSkills.strength;
 
-        return ownerValue > opponentValue;
+        uint64 criticalHit = random(range, _step);
+        uint64 escapeHit = random(range, _step + 1);
+
+        if (escapeHit < escapeHitChance) {
+          return 0;
+        } else if (criticalHit < criticalHitChance) {
+          return 2 * attackPower;
+        } else {
+          return attackPower;
+        }
     }
 }
 
 contract DragonTest is DragonFight {
-
     function createTestData() public onlyOwner {
-        // 0.001 eth
-        uint256 price = 1000000000000000;
-
-        uint newDragon1Id = _createDragon(1, 2, 1, 1, 1, 1, 1, 1, 1, price);
+        uint newDragon1Id = _createDragon(1, '#F7CD41', '#0397D8', 1, 1, 1, 1);
         _transfer(0, msg.sender, newDragon1Id);
+        dragons[newDragon1Id].name = 'Adam';
         dragonsOnSaleCount--;
 
-        uint newDragon2Id = _createDragon(2, 6, 2, 2, 2, 2, 2, 2, 2, price);
+        uint newDragon2Id = _createDragon(1, '#DE19A1', '#D82782', 1, 2, 2, 3);
         _transfer(0, msg.sender, newDragon2Id);
+        dragons[newDragon2Id].name = 'Eva';
         dragonsOnSaleCount--;
 
-        // Free dragons
-        _createDragon(3, 2, 3, 3, 3, 1, 3, 3, 3, price);
-        _createDragon(4, 4, 4, 4, 2, 2, 2, 4, 4, price);
+        _createDragon(1, '#FF003C', '#88C100', 1, 3, 2, 2);
+        _createDragon(1, '#AAFF00', '#AA00FF', 1, 2, 1, 3);
     }
 }
