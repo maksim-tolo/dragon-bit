@@ -315,9 +315,34 @@ contract DragonCore is DragonOwnership {
         uint8 _hornsType,
         uint8 _wingsType,
         uint16 _health,
-        uint16 _price,
-        address _owner
+        uint16 _price
       ) external onlyOwner returns (uint) {
+        return _createDragon(
+          _attack,
+          _defence,
+          _color,
+          _bodyType,
+          _eyesType,
+          _mouthType,
+          _hornsType,
+          _wingsType,
+          _health,
+          _price
+        );
+    }
+    
+    function _createDragon (
+        uint8 _attack,
+        uint8 _defence,
+        uint8 _color,
+        uint8 _bodyType,
+        uint8 _eyesType,
+        uint8 _mouthType,
+        uint8 _hornsType,
+        uint8 _wingsType,
+        uint16 _health,
+        uint16 _price
+      ) internal returns (uint) {
         Dragon memory _dragon = Dragon({
           attack: _attack,
           defence: _defence,
@@ -367,13 +392,13 @@ contract Random {
   // given the number of previous blocks it should hash.
   function random(uint64 upper) public returns (uint64 randomNumber) {
     _seed = uint64(keccak256(keccak256(block.blockhash(block.number), _seed), now));
-
+    
     return _seed % upper;
   }
 }
 
 contract DragonFight is DragonCore, Random {
-
+    
     event Fight(uint256 _ownerDragonId,
                 uint256 _opponentDragonId,
                 bool firstAttack,
@@ -402,7 +427,24 @@ contract DragonFight is DragonCore, Random {
     returns(bool result) {
         uint64 ownerValue = random(uint64(_ownerDragonAmount));
         uint64 opponentValue = random(uint64(_opponentDragonAmount));
-
+        
         return ownerValue > opponentValue;
     }
 }
+
+contract DragonTest is DragonFight {
+    
+    function createTestData() public onlyOwner {
+
+        uint newDragon1Id = _createDragon(1, 2, 1, 1, 1, 1, 1, 1, 1, 1);
+        _transfer(0, msg.sender, newDragon1Id);
+
+        uint newDragon2Id = _createDragon(2, 6, 2, 2, 2, 2, 2, 2, 2, 1);
+        _transfer(0, msg.sender, newDragon2Id);
+        
+        // Free dragons
+        _createDragon(3, 2, 3, 3, 3, 3, 3, 3, 3, 1);
+        _createDragon(4, 4, 4, 4, 4, 4, 4, 4, 4, 1);
+    }
+}
+
